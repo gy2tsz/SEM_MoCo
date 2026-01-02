@@ -1,5 +1,4 @@
 import torch
-import torch.amp
 import tqdm
 import wandb
 from utils import global_state
@@ -29,7 +28,7 @@ class MoCoTrainer:
         self.use_amp = use_amp
 
         if self.use_amp:
-            self.scaler = torch.cuda.amp.GradScaler()
+            self.scaler = torch.amp.GradScaler("cuda")
 
     @torch.no_grad()
     def eval(self, val_loader, epoch):
