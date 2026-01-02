@@ -28,7 +28,7 @@ class MoCoTrainer:
         self.use_amp = use_amp
 
         if self.use_amp:
-            self.scaler = torch.amp.GradScaler("cuda")
+            self.scaler = torch.amp.GradScaler()
 
     @torch.no_grad()
     def eval(self, val_loader, epoch):
