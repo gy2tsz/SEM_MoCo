@@ -9,10 +9,30 @@ from PIL import Image
 import onnxruntime as ort
 from torchvision import transforms
 import time
+from onnx_optimizer import optimize_onnx_model
+import platform
 
 
-def create_session(onnx_model_path, use_tensorrt=True):
-    """Create ONNX Runtime session with TensorRT provider (GPU) or CPU."""
+def create_session(
+    onnx_model_path,
+    use_tensorrt=True,
+    graph_optimization_level=None,
+    use_quantization=False,
+    quantized_model_path=None,
+):
+    """
+    Create ONNX Runtime session with optimizations.
+
+    Args:
+        onnx_model_path: Path to ONNX model
+        use_tensorrt: Enable TensorRT execution provider
+        graph_optimization_level: Optimization level (None, "disabled", "basic", "extended", "all")
+        use_quantization: Use quantized model if available
+        quantized_model_path: Path to quantized ONNX model
+
+    Returns:
+        ONNX Runtime InferenceSession
+    """
 
     print("🚀 Creating ONNX Runtime session...")
 
@@ -51,13 +71,40 @@ def create_session(onnx_model_path, use_tensorrt=True):
     # Add CPU provider (always available)
     providers.append("CPUExecutionProvider")
 
+    # Set graph optimization level
+    if graph_optimization_level is None:
+        graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+    # Select model (quantized or original)
+    model_path = onnx_model_path
+    if use_quantization and quantized_model_path:
+        if os.path.exists(quantized_model_path):
+            model_path = quantized_model_path
+            print(f"📊 Using quantized model: {quantized_model_path}")
+        else:
+            print(
+                f"⚠️  Quantized model not found at {quantized_model_path}, using original model"
+            )
+
+    # Create session options with graph optimization
+    session_options = ort.SessionOptions()
+    session_options.graph_optimization_level = graph_optimization_level
+
+    # Enable profiling for performance analysis
+    # session_options.enable_profiling = True
+
+    # Set execution mode
+    session_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+
     # Create session
     try:
         session = ort.InferenceSession(
-            onnx_model_path,
+            model_path,
+            sess_options=session_options,
             providers=providers,
         )
         print(f"✓ Session created with providers: {session.get_providers()}")
+        print(f"✓ Graph optimization: {graph_optimization_level}")
     except Exception as e:
         print(f"✗ Error creating session: {e}")
         raise
@@ -65,7 +112,7 @@ def create_session(onnx_model_path, use_tensorrt=True):
     return session
 
 
-def preprocess_image(image_path, image_size=224):
+def preprocess_image(image_path, image_size=224) -> np.ndarray:
     """Preprocess image for inference."""
 
     transform = transforms.Compose(
@@ -77,8 +124,8 @@ def preprocess_image(image_path, image_size=224):
     )
 
     image = Image.open(image_path).convert("RGB")
-    image_tensor = transform(image)
-    image_np = image_tensor.detach().cpu().numpy()
+    image_tensor: torch.Tensor = transform(image)  # type: ignore
+    image_np = image_tensor.numpy()
 
     # Add batch dimension: (C, H, W) -> (B, C, H, W)
     image_np = np.expand_dims(image_np, axis=0)
@@ -144,7 +191,14 @@ def batch_inference(session, image_dir, image_size=224):
 
 
 def main(
-    onnx_model_path, image_path=None, image_dir=None, image_size=224, use_tensorrt=True
+    onnx_model_path,
+    image_path=None,
+    image_dir=None,
+    image_size=224,
+    use_tensorrt=True,
+    graph_optimization_level="all",
+    use_quantization=False,
+    quantized_model_path=None,
 ):
     """Main inference function."""
 
@@ -154,14 +208,36 @@ def main(
 
     print(f"📦 ONNX model: {onnx_model_path}")
 
+    # Map optimization level string to enum
+    optimization_levels = {
+        "disabled": ort.GraphOptimizationLevel.ORT_DISABLE_ALL,
+        "basic": ort.GraphOptimizationLevel.ORT_ENABLE_BASIC,
+        "extended": ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
+        "all": ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
+    }
+
+    opt_level = optimization_levels.get(
+        graph_optimization_level.lower(),
+        ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
+    )
+
     # Create ONNX Runtime session
-    session = create_session(onnx_model_path, use_tensorrt=use_tensorrt)
+    session = create_session(
+        onnx_model_path,
+        use_tensorrt=use_tensorrt,
+        graph_optimization_level=opt_level,
+        use_quantization=use_quantization,
+        quantized_model_path=quantized_model_path,
+    )
 
     # Run inference
     if image_path:
         features, inference_time = run_inference(session, image_path, image_size)
         print(f"\n✓ Inference complete")
-        print(f"  Features shape: {features.shape}")
+        if hasattr(features, 'shape'):
+            print(f"  Features shape: {features.shape}")  # type: ignore
+        else:
+            print(f"  Features type: {type(features)}")
     elif image_dir:
         batch_inference(session, image_dir, image_size)
     else:
@@ -170,7 +246,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Inference with ONNX Runtime + TensorRT"
+        description="Inference with ONNX Runtime + TensorRT + Graph Optimization"
     )
     parser.add_argument(
         "--model",
@@ -198,6 +274,24 @@ if __name__ == "__main__":
         action="store_true",
         help="Disable TensorRT and use CUDA/CPU only",
     )
+    parser.add_argument(
+        "--graph-optimization",
+        type=str,
+        choices=["disabled", "basic", "extended", "all"],
+        default="all",
+        help="Graph optimization level (default: all)",
+    )
+    parser.add_argument(
+        "--use-quantization",
+        action="store_true",
+        help="Enable quantized model inference",
+    )
+    parser.add_argument(
+        "--quantized-model",
+        type=str,
+        default=None,
+        help="Path to quantized ONNX model",
+    )
     args = parser.parse_args()
 
     main(
@@ -206,4 +300,7 @@ if __name__ == "__main__":
         image_dir=args.image_dir,
         image_size=args.image_size,
         use_tensorrt=not args.no_tensorrt,
+        graph_optimization_level=args.graph_optimization,
+        use_quantization=args.use_quantization,
+        quantized_model_path=args.quantized_model,
     )
