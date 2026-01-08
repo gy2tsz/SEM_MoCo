@@ -1,7 +1,7 @@
 import torch
-import torch.amp
 import tqdm
 import wandb
+import os
 from utils import global_state
 
 
@@ -17,6 +17,7 @@ class MoCoTrainer:
         save_every_epochs=None,
         device=None,
         use_amp=False,
+        start_epoch=1,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -27,6 +28,7 @@ class MoCoTrainer:
         self.save_every_epochs = save_every_epochs
         self.device = device
         self.use_amp = use_amp
+        self.start_epoch = start_epoch
 
         if self.use_amp:
             self.scaler = torch.cuda.amp.GradScaler()
@@ -42,11 +44,11 @@ class MoCoTrainer:
 
             if self.use_amp:
                 with torch.amp.autocast(device_type="cuda"):
-                    q, k = self.model(im_q, im_k)
-                    loss = self.criterion(q, k)
+                    logits, labels = self.model(im_q, im_k)
+                    loss = self.criterion(logits, labels)
             else:
-                q, k = self.model(im_q, im_k)
-                loss = self.criterion(q, k)
+                logits, labels = self.model(im_q, im_k)
+                loss = self.criterion(logits, labels)
 
             total_loss += loss.item()
 
@@ -94,8 +96,14 @@ class MoCoTrainer:
 
         return loss.item()
 
-    def train(self, train_loader, val_loader=None, eval_every_epochs=1):
-        for epoch in range(1, self.epochs + 1):
+    def train(
+        self,
+        train_loader,
+        val_loader=None,
+        eval_every_epochs=1,
+        out_dir="./checkpoints/",
+    ):
+        for epoch in range(self.start_epoch, self.epochs + 1):
             train_loss = 0.0
             progress_bar = tqdm.tqdm(train_loader, desc=f"Epoch {epoch}/{self.epochs}")
 
@@ -122,7 +130,10 @@ class MoCoTrainer:
                 wandb.log({"val/epoch_loss": avg_val_loss}, step=global_state.get())
 
             if self.save_every_epochs and epoch % self.save_every_epochs == 0:
-                save_path = f"moco_{self.stage}_epoch_{epoch}.pth"
+                save_path = os.path.join(
+                    out_dir, f"moco_{self.stage}_epoch_{epoch}.pth"
+                )
+                os.makedirs(out_dir, exist_ok=True)
                 torch.save(
                     {
                         "model": self.model.state_dict(),

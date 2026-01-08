@@ -1,0 +1,22 @@
+# AWS S3 Configuration for downloading SEM datasets
+
+# S3 bucket name
+bucket: sem-moco-data
+
+# AWS profile to use (optional, defaults to default profile)
+profile: null
+
+# Datasets to download
+datasets:
+  train:
+    s3_prefix: train_stage_1/
+    local_dir: ./datasets/train_stage1
+  
+  eval:
+    s3_prefix: eval_stage_1/
+    local_dir: ./datasets/eval_stage1
+
+# Optional: Download settings
+download_settings:
+  max_workers: 4  # Parallel downloads
+  verify_checksums: true  # Verify after download

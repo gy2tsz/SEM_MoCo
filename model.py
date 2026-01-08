@@ -1,8 +1,31 @@
+import copy
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import wandb
 from utils import global_state
+
+
+def init_weights_he(module):
+    """He/Kaiming initialization for Conv2d and Linear layers with ReLU."""
+    if isinstance(module, (nn.Conv2d, nn.Linear)):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0.0)
+    elif isinstance(module, (nn.BatchNorm2d, nn.BatchNorm1d, nn.LayerNorm)):
+        nn.init.constant_(module.weight, 1.0)
+        nn.init.constant_(module.bias, 0.0)
+
+
+def init_projection_head(module):
+    """Xavier initialization for projection head (no ReLU after final layer)."""
+    if isinstance(module, nn.Linear):
+        nn.init.xavier_uniform_(module.weight)
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0.0)
+    elif isinstance(module, (nn.LayerNorm,)):
+        nn.init.constant_(module.weight, 1.0)
+        nn.init.constant_(module.bias, 0.0)
 
 
 @torch.no_grad()
@@ -27,23 +50,33 @@ class MoCo(nn.Module):
         self.queue_size = queue_size
 
         self.encoder_q = backbone
-        self.encoder_k = backbone
+        # Create separate encoder_k to avoid shared parameters
+        self.encoder_k = copy.deepcopy(backbone)
 
         self.in_features = backbone.fc.in_features
         self.encoder_k.fc = nn.Identity()
         self.encoder_q.fc = nn.Identity()
 
-        # Projection head
+        # Projection head with layer norm
         self.proj_q = nn.Sequential(
             nn.Linear(self.in_features, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, proj_dim),
         )
         self.proj_k = nn.Sequential(
             nn.Linear(self.in_features, hidden_dim),
+            nn.LayerNorm(hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, proj_dim),
         )
+
+        # Initialize all learnable parameters with proper initialization
+        for encoder in [self.encoder_q, self.encoder_k]:
+            encoder.apply(init_weights_he)
+        # Projection head uses Xavier for stability (no ReLU after final layer)
+        self.proj_q.apply(init_projection_head)
+        self.proj_k.apply(init_projection_head)
 
         # Initialize the key encoder parameters to be the same as query encoder
         for param_q, param_k in zip(
@@ -97,12 +130,24 @@ class MoCo(nn.Module):
         logits /= self.T
         labels = torch.zeros(logits.shape[0], dtype=torch.long).to(logits.device)
 
+        # Monitor feature statistics
+        q_norm = torch.norm(q, dim=1).mean().item()
+        k_norm = torch.norm(k, dim=1).mean().item()
+        q_std = q.std(dim=0).mean().item()  # Feature diversity
+
+        # Monitor similarity margin (gap between positive and negative)
+        margin = (l_pos.mean() - l_neg.mean()).item()
+
         wandb.log(
             {
                 "debug/pos_sim_mean": l_pos.mean().item(),
                 "debug/pos_sim_std": l_pos.std().item(),
                 "debug/neg_sim_mean": l_neg.mean().item(),
                 "debug/neg_sim_std": l_neg.std().item(),
+                "debug/q_norm": q_norm,
+                "debug/k_norm": k_norm,
+                "debug/q_feature_diversity": q_std,
+                "debug/similarity_margin": margin,
             },
             step=global_state.get(),
         )

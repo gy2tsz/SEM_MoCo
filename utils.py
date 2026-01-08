@@ -1,6 +1,11 @@
 import argparse
 import yaml
+import os
+from dotenv import load_dotenv
 from dataclasses import dataclass
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 BASE_CONFIG_PATH = "configs/base_config.yaml"
@@ -65,7 +70,7 @@ class CFG:
     seed: int = 42
 
     # WandB
-    wandb_key: str = ""
+    wandb_key: str = ""  # Will be loaded from .env file
 
 
 def load_yaml_config(file_path):
@@ -120,16 +125,120 @@ def parse_args():
     return args
 
 
-def init_wandb(cfg, run_name_suffix=""):
+def init_wandb(cfg, run_name_suffix="", resume=False, run_id=None):
+    """
+    Initialize Weights & Biases for tracking.
+
+    Args:
+        cfg: Configuration dict or object
+        run_name_suffix: Suffix to append to run name
+        resume: If True, resumes the last unfinished run. If False, creates a new run.
+        run_id: Specific run ID to resume. If provided, overrides resume parameter.
+
+    Returns:
+        wandb module or None if initialization fails
+    """
     import wandb
     import sys
 
-    wandb.login(key=cfg["wandb_key"])
-    wandb.init(
-        project="moco-sem-pretrain",
-        name=f"sem_moco_resnet50_{run_name_suffix}",
-        config=cfg if isinstance(cfg, dict) else cfg.__dict__,
-        tags=["moco", "resnet50", "sem"],
-    )
-    wandb.config.update({"cmd": " ".join(sys.argv)}, allow_val_change=True)
+    # Load wandb key from environment variables (.env file)
+    wandb_key = os.getenv("WANDB_API_KEY")
+
+    if not wandb_key:
+        print(
+            "⚠️  Warning: WANDB_API_KEY not found in .env file. WandB will run in offline mode."
+        )
+
+    # Initialize wandb with optional API key
+    init_kwargs = {
+        "project": "moco-sem-pretrain",
+        "name": f"sem_moco_resnet50_{run_name_suffix}",
+        "config": cfg if isinstance(cfg, dict) else cfg.__dict__,
+        "tags": ["moco", "resnet50", "sem"],
+    }
+
+    # Handle resumption
+    if run_id:
+        # Resume a specific run by ID
+        init_kwargs["id"] = run_id
+        init_kwargs["resume"] = "must"
+        print(f"📊 Resuming WandB run: {run_id}")
+    elif resume:
+        # Resume the last unfinished run
+        init_kwargs["resume"] = "allow"
+        print("📊 Attempting to resume last unfinished WandB run...")
+    else:
+        # Start fresh
+        init_kwargs["resume"] = "never"
+
+    try:
+        wandb.init(**init_kwargs)
+    except Exception as e:
+        print(f"⚠️  WandB init error: {e}. Continuing without WandB tracking.")
+        return None
+
+    try:
+        wandb.config.update({"cmd": " ".join(sys.argv)}, allow_val_change=True)
+    except TypeError:
+        # For newer wandb versions that don't support allow_val_change parameter
+        wandb.config.update({"cmd": " ".join(sys.argv)})
+
     return wandb
+
+
+def get_last_wandb_run_id():
+    """
+    Retrieve the last run ID from the latest WandB run directory.
+
+    Returns:
+        str: Run ID of the last run, or None if not found
+    """
+    from pathlib import Path
+
+    wandb_dir = Path("./wandb")
+    if not wandb_dir.exists():
+        print("⚠️  No WandB directory found. Starting fresh run.")
+        return None
+
+    # Find the latest run directory
+    run_dirs = [
+        d for d in wandb_dir.iterdir() if d.is_dir() and d.name.startswith("run-")
+    ]
+    if not run_dirs:
+        print("⚠️  No WandB runs found. Starting fresh run.")
+        return None
+
+    # Get the latest run by modification time
+    latest_run = max(run_dirs, key=lambda p: p.stat().st_mtime)
+
+    # Extract run ID from directory name: run-TIMESTAMP-RUN_ID
+    run_dir_name = latest_run.name
+    parts = run_dir_name.split("-")
+
+    if len(parts) >= 3:
+        run_id = parts[-1]  # Last part is the run ID
+        print(f"📊 Found last run ID: {run_id}")
+        return run_id
+
+    print(f"⚠️  Could not extract run ID from {run_dir_name}. Starting fresh run.")
+    return None
+
+
+def init_wandb_with_resume(cfg, run_name_suffix="", auto_resume=True):
+    """
+    Initialize WandB with automatic resumption of last unfinished run.
+
+    Args:
+        cfg: Configuration dict or object
+        run_name_suffix: Suffix to append to run name
+        auto_resume: If True, automatically resume last run. If False, start fresh.
+
+    Returns:
+        wandb module or None if initialization fails
+    """
+    if auto_resume:
+        run_id = get_last_wandb_run_id()
+        if run_id:
+            return init_wandb(cfg, run_name_suffix=run_name_suffix, run_id=run_id)
+
+    return init_wandb(cfg, run_name_suffix=run_name_suffix, resume=False)

@@ -27,7 +27,7 @@ def split_indices(num_samples, val_fraction, seed=42):
     return train_indices, val_indices
 
 
-def list_images(root: str, exts=('.jpg', '.jpeg', '.png', '.bmp')) -> list[str]:
+def list_images(root: str, exts=(".jpg", ".jpeg", ".png", ".bmp")) -> list[str]:
     images = []
     for dirpath, _, filenames in os.walk(root):
         for filename in filenames:
@@ -38,12 +38,13 @@ def list_images(root: str, exts=('.jpg', '.jpeg', '.png', '.bmp')) -> list[str]:
 
 class TwoCropTransform:
     """Create two crops of the same image."""
+
     def __init__(self, base_transform):
         self.base_transform = base_transform
 
     def __call__(self, x):
         return [self.base_transform(x), self.base_transform(x)]
-    
+
 
 class UnlabeledDataset(Dataset):
     def __init__(self, root: str, transform=None):
@@ -54,7 +55,7 @@ class UnlabeledDataset(Dataset):
 
     def __len__(self):
         return len(self.image_paths)
-    
+
     def __getitem__(self, idx: int):
         path = self.image_paths[idx]
         img = Image.open(path)
@@ -62,29 +63,42 @@ class UnlabeledDataset(Dataset):
             img = self.transform(img)
         return img
 
+
 def infinite_loader(data_loader):
     while True:
         for batch in data_loader:
             yield batch
 
+
 # transforms
 def build_sem_transforms(image_size):
     # SEM-friendly augmentations. (MoCo v2 typically uses strong aug.)
-    base = transforms.Compose([
-        transforms.Grayscale(num_output_channels=3),         # SEM often grayscale -> 3ch
-        transforms.RandomResizedCrop(image_size, scale=(0.2, 1.0)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomApply([transforms.GaussianBlur(kernel_size=23)], p=0.3),
-        # Keep jitter mild for SEM; can set to 0 if it hurts
-        transforms.RandomApply([transforms.ColorJitter(0.15, 0.15, 0.15, 0.05)], p=0.2),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25)),
-    ])
+    base = transforms.Compose(
+        [
+            transforms.Grayscale(num_output_channels=3),
+            transforms.RandomResizedCrop(image_size, scale=(0.2, 1.0)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomRotation(degrees=15),
+            # Keep jitter mild for SEM; can set to 0 if it hurts
+            transforms.RandomApply(
+                [transforms.ColorJitter(0.15, 0.15, 0.15, 0.05)], p=0.2
+            ),
+            # GaussianBlur helps with microscope noise and is standard in MoCo v2
+            transforms.RandomApply(
+                [transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0))], p=0.5
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25)),
+        ]
+    )
     return TwoCropTransform(base)
 
+
 # dataloader
-def build_dataloader_from_dir(data_dir, image_size, batch_size, shuffle=True, num_workers=8):
+def build_dataloader_from_dir(
+    data_dir, image_size, batch_size, shuffle=True, num_workers=8
+):
     transform = build_sem_transforms(image_size)
     ds = UnlabeledDataset(root=data_dir, transform=transform)
 
@@ -115,11 +129,11 @@ def build_dataloader(data_dir, image_size, batch_size, num_workers, val_fraction
         pin_memory=True,
         drop_last=True,
     )
-    
+
     val_loader = DataLoader(
         ds_val,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=num_workers,
         pin_memory=True,
         drop_last=True,
