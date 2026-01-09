@@ -27,5 +27,5 @@ seed: 42
 # Debug paths
 train_dir: ./datasets/train_stage2
 eval_dir: ./datasets/eval_stage2
-out_dir: ./checkpoints/moco_stage2
-log_dir: ./logs/moco_stage2
+out_dir: ./checkpoints/stage2
+log_dir: ./logs/stage2

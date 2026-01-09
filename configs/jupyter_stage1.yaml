@@ -1,8 +1,8 @@
 # Paths
 train_dir: /datasets/sem_moco/train_stage_1
 eval_dir: /datasets/sem_moco/eval_stage_1
-out_dir: ./checkpoints/moco_stage1
-log_dir: ./logs/moco_stage1
+out_dir: ./checkpoints/stage1
+log_dir: ./logs/stage1
 
 # Train
 epochs: 250

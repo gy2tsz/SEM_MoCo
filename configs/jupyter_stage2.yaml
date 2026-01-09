@@ -1,11 +1,11 @@
 # Paths
 train_dir: /datasets/sem_moco/train_stage_2
 eval_dir: /datasets/sem_moco/eval_stage_2
-out_dir: ./checkpoints/moco_stage2
-log_dir: ./logs/moco_stage2
+out_dir: ./checkpoints/stage2
+log_dir: ./logs/stage2
 
 # Train
-epochs: 150
+epochs: 250
 
 # WandB
 wandb_project: sem_moco_stage2

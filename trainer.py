@@ -131,7 +131,7 @@ class MoCoTrainer:
 
             if self.save_every_epochs and epoch % self.save_every_epochs == 0:
                 save_path = os.path.join(
-                    out_dir, f"moco_{self.stage}_epoch_{epoch}.pth"
+                    out_dir, f"stage_{self.stage}_epoch_{epoch}.pth"
                 )
                 os.makedirs(out_dir, exist_ok=True)
                 torch.save(

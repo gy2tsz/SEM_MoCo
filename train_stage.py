@@ -13,7 +13,7 @@ from trainer import MoCoTrainer
 
 def find_latest_checkpoint(out_dir):
     """Find the most recent checkpoint in the output directory."""
-    checkpoint_files = glob.glob(os.path.join(out_dir, "moco_*_epoch_*.pth"))
+    checkpoint_files = glob.glob(os.path.join(out_dir, "stage_*_epoch_*.pth"))
     if not checkpoint_files:
         return None
 
@@ -181,7 +181,7 @@ def main(
         criterion=nn.CrossEntropyLoss(),
         epochs=cfg["epochs"],
         steps_per_epoch=len(train_loader),
-        stage=1,
+        stage=stage,
         save_every_epochs=cfg["save_every_epochs"],
         device=device,
         use_amp=use_amp,
@@ -196,7 +196,8 @@ def main(
     )
 
     torch.save(
-        model.state_dict(), os.path.join(cfg["out_dir"], f"moco_stage{stage}_final.pth")
+        model.state_dict(),
+        os.path.join(cfg["out_dir"], f"sem_moco_stage{stage}_final.pth"),
     )
     print("Training completed.")
 
