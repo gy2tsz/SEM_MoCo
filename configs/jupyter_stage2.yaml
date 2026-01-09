@@ -6,3 +6,6 @@ log_dir: ./logs/moco_stage2
 
 # Train
 epochs: 150
+
+# WandB
+wandb_project: sem_moco_stage2
