@@ -41,12 +41,12 @@ class CFG:
     train_dir: str = ""
     eval_dir: str = ""
     img_size: int = 224
-    val_fraction: float = 0.05  # Fraction of data used for validation
+    # val_fraction: float = 0.05  # Fraction of data used for validation
     eval_every_epochs: int = 1  # Evaluate every N epochs
 
     # Mix ratio per step: batch = nffa_bs + nano_bs
     total_batch_size: int = 128
-    nffa_fraction: float = 0.5  # 0.5 -> 50/50
+    # nffa_fraction: float = 0.5  # 0.5 -> 50/50
     num_workers: int = 8
 
     # MoCo
@@ -68,9 +68,6 @@ class CFG:
     out_dir: str = ""
     save_every_epochs: int = 10
     seed: int = 42
-
-    # WandB
-    wandb_key: str = ""  # Will be loaded from .env file
 
 
 def load_yaml_config(file_path):
@@ -141,10 +138,8 @@ def init_wandb(cfg, run_name_suffix="", resume=False, run_id=None):
     import wandb
     import sys
 
-    # Load wandb key from environment variables (.env file)
-    wandb_key = os.getenv("WANDB_API_KEY")
-
-    if not wandb_key:
+    # Check if WANDB_API_KEY is available in environment
+    if not os.getenv("WANDB_API_KEY"):
         print(
             "⚠️  Warning: WANDB_API_KEY not found in .env file. WandB will run in offline mode."
         )
