@@ -69,6 +69,9 @@ class CFG:
     save_every_epochs: int = 10
     seed: int = 42
 
+    # WandB
+    wandb_project: str = "moco-sem-pretrain"
+
 
 def load_yaml_config(file_path):
     """Load a single YAML file."""
@@ -146,7 +149,9 @@ def init_wandb(cfg, run_name_suffix="", resume=False, run_id=None):
 
     # Initialize wandb with optional API key
     init_kwargs = {
-        "project": "moco-sem-pretrain",
+        "project": (
+            cfg["wandb_project"] if "wandb_project" in cfg else "moco-sem-pretrain"
+        ),
         "name": f"sem_moco_resnet50_{run_name_suffix}",
         "config": cfg if isinstance(cfg, dict) else cfg.__dict__,
         "tags": ["moco", "resnet50", "sem"],
