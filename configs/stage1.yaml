@@ -1,8 +1,0 @@
-# Paths
-train_stage_1: ./datasets/train_stage1
-eval_stage_1: ./datasets/eval_stage1
-out_dir: ./checkpoints/moco_stage1
-log_dir: ./logs/moco_stage1
-
-# Training parameters
-epochs: 200

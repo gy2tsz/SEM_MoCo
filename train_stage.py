@@ -69,7 +69,10 @@ class MixedLoader:
 
 
 def main(
-    yaml_config_path: str = "./configs/stage1.yaml", resume=False, checkpoint_path=None
+    yaml_config_path: str = "./configs/base_config.yaml",
+    resume=False,
+    checkpoint_path=None,
+    stage: int = 0,
 ):
     # reset global state
     global_state.reset()
@@ -125,20 +128,20 @@ def main(
     # val_loader = MixedLoader(nffa_eval_loader, nano_eval_loader, val_steps) if val_steps > 0 else None
 
     train_loader = build_dataloader_from_dir(
-        data_dir=cfg["train_stage_1"],
+        data_dir=cfg["train_dir"],
         image_size=cfg["img_size"],
         batch_size=cfg["total_batch_size"],
         num_workers=cfg["num_workers"],
     )
 
     eval_loader = build_dataloader_from_dir(
-        data_dir=cfg["eval_stage_1"],
+        data_dir=cfg["eval_dir"],
         image_size=cfg["img_size"],
         batch_size=cfg["total_batch_size"],
         num_workers=cfg["num_workers"],
     )
 
-    init_wandb(cfg, run_name_suffix="stage1")
+    init_wandb(cfg, run_name_suffix=f"stage{stage}")
 
     # model, optimizer, trainer, etc.
     model = MoCo(
@@ -193,16 +196,16 @@ def main(
     )
 
     torch.save(
-        model.state_dict(), os.path.join(cfg["out_dir"], "moco_stage1_final.pth")
+        model.state_dict(), os.path.join(cfg["out_dir"], f"moco_stage{stage}_final.pth")
     )
     print("Training completed.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MoCo Training Stage 1")
+    parser = argparse.ArgumentParser(description="MoCo Training")
     parser.add_argument(
         "--config",
-        default="./configs/stage1.yaml",
+        default="./configs/base_config.yaml",
         help="Path to config file",
     )
     parser.add_argument(
@@ -215,5 +218,16 @@ if __name__ == "__main__":
         default=None,
         help="Path to specific checkpoint to resume from",
     )
+    parser.add_argument(
+        "--stage",
+        default=0,
+        help="Training stage number",
+    )
+
     args = parser.parse_args()
-    main(args.config, resume=args.resume, checkpoint_path=args.checkpoint)
+    main(
+        args.config,
+        resume=args.resume,
+        checkpoint_path=args.checkpoint,
+        stage=args.stage,
+    )

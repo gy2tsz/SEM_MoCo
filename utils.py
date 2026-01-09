@@ -38,8 +38,8 @@ global_state = GlobalState()
 @dataclass
 class CFG:
     # Data
-    train_stage_1: str = "datasets/train_stage_1"
-    eval_stage_1: str = "datasets/eval_stage_1"
+    train_dir: str = ""
+    eval_dir: str = ""
     img_size: int = 224
     val_fraction: float = 0.05  # Fraction of data used for validation
     eval_every_epochs: int = 1  # Evaluate every N epochs

@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 ```bash
 # Train model (or load existing checkpoint)
-python train_stage1.py
+python train_stage.py
 ```
 
 ### Step 2: Export to ONNX

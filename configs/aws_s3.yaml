@@ -8,11 +8,11 @@ profile: null
 
 # Datasets to download
 datasets:
-  train:
+  train_stage1:
     s3_prefix: train_stage_1/
     local_dir: ./datasets/train_stage1
   
-  eval:
+  eval_stage1:
     s3_prefix: eval_stage_1/
     local_dir: ./datasets/eval_stage1
 
