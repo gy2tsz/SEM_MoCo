@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import PIL.Image as Image
 import random
 import torch
@@ -125,9 +126,11 @@ def build_dataloader_from_dir(
     return data_loader
 
 
-def build_dataloader(ds_full, image_size, batch_size, num_workers, val_fraction=0.05):
+def build_dataloader(
+    ds_full, image_size, batch_size, num_workers, val_fraction=0.05, seed=42
+):
     train_transform, val_transform = build_sem_transforms(image_size)
-    train_idxes, val_idxes = split_indices(len(ds_full), val_fraction)
+    train_idxes, val_idxes = split_indices(len(ds_full), val_fraction, seed)
     ds_train = torch.utils.data.Subset(ds_full, train_idxes)
     ds_val = torch.utils.data.Subset(ds_full, val_idxes)
 
@@ -184,8 +187,8 @@ class CSVCarinthiaDataset(torch.utils.data.Dataset):
         csv_path: str,
         img_dir: str,
         transform=None,
-        img_col: str = None,
-        label_col: str = None,
+        img_col: Optional[str] = None,
+        label_col: Optional[str] = None,
     ):
         """
         Args:
@@ -312,8 +315,8 @@ def build_dataloaders_from_csv(
     num_workers: int,
     val_fraction: float = 0.2,
     seed: int = 42,
-    img_col: str = None,
-    label_col: str = None,
+    img_col: Optional[str] = None,
+    label_col: Optional[str] = None,
 ):
     """
     Build dataloaders from CSV file.
@@ -344,6 +347,7 @@ def build_dataloaders_from_csv(
         batch_size,
         num_workers,
         val_fraction=val_fraction,
+        seed=seed,
     )
 
     return train_loader, val_loader, class_names

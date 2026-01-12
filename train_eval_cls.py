@@ -294,6 +294,8 @@ def main(
         num_workers=cfg["num_workers"],
         val_fraction=cfg["val_fraction"],
         seed=cfg["seed"],
+        img_col="file_name",
+        label_col="label",
     )
 
     # Create model
