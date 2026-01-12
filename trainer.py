@@ -43,7 +43,7 @@ class MoCoTrainer:
             im_k = im_k.to(self.device)
 
             if self.use_amp:
-                with torch.amp.autocast(device_type="cuda"):
+                with torch.cuda.amp.autocast():
                     logits, labels = self.model(im_q, im_k)
                     loss = self.criterion(logits, labels)
             else:
@@ -70,7 +70,7 @@ class MoCoTrainer:
         im_k = im_k.to(self.device)
 
         if self.use_amp:
-            with torch.amp.autocast(device_type="cuda"):
+            with torch.cuda.amp.autocast():
                 q, k = self.model(im_q, im_k)
                 loss = self.criterion(q, k)
 

@@ -9,7 +9,7 @@ from utils import global_state
 def init_weights_he(module):
     """He/Kaiming initialization for Conv2d and Linear layers with ReLU."""
     if isinstance(module, (nn.Conv2d, nn.Linear)):
-        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
         if module.bias is not None:
             nn.init.constant_(module.bias, 0.0)
     elif isinstance(module, (nn.BatchNorm2d, nn.BatchNorm1d, nn.LayerNorm)):
@@ -154,3 +154,26 @@ class MoCo(nn.Module):
 
         self._dequeue_and_enqueue(k)
         return logits, labels
+
+
+class ClassificationHead(nn.Module):
+    """Classification head on top of ResNet50 backbone."""
+
+    def __init__(self, backbone_dim: int, num_classes: int, dropout_rate: float = 0.5):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Linear(backbone_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout_rate),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout_rate),
+        )
+        self.classifier = nn.Linear(256, num_classes)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x

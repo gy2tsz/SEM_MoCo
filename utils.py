@@ -73,6 +73,12 @@ class CFG:
     wandb_project: str = "moco-sem-pretrain"
 
 
+@dataclass
+class CLS_CFG(CFG):
+    num_classes: int = 10
+    csv_path: str = ""
+
+
 def load_yaml_config(file_path):
     """Load a single YAML file."""
     with open(file_path, "r") as file:
@@ -102,9 +108,9 @@ def apply_overrides(config, overrides):
     return config
 
 
-def get_config_hierarchical(stage_config_path: str):
+def get_config_hierarchical(stage_config_path: str, config_class=CFG):
     base_config = load_yaml_config(BASE_CONFIG_PATH)
-    cfg_dict = apply_overrides(CFG().__dict__, base_config)
+    cfg_dict = apply_overrides(config_class().__dict__, base_config)
     stage_config = load_yaml_config(stage_config_path)
     cfg_dict = deep_merge_dicts(cfg_dict, stage_config)
     return cfg_dict

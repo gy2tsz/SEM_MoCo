@@ -6,6 +6,8 @@ log_dir: ./logs/stage2
 
 # Train
 epochs: 250
+total_batch_size: 128
+lr: 0.015
 
 # WandB
 wandb_project: sem_moco_stage2
