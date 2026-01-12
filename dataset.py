@@ -160,25 +160,6 @@ def build_dataloader(
     return train_loader, val_loader
 
 
-def inspect_csv_columns(csv_path: str):
-    """
-    Inspect and display CSV columns for debugging.
-
-    Args:
-        csv_path: Path to CSV file
-    """
-    try:
-        df = pd.read_csv(csv_path)
-        print(f"\n✓ CSV File: {csv_path}")
-        print(f"  Rows: {len(df)}")
-        print(f"  Columns: {list(df.columns)}")
-        print(f"  First row: {df.iloc[0].to_dict() if len(df) > 0 else 'Empty'}")
-        return list(df.columns)
-    except Exception as e:
-        print(f"Error inspecting CSV: {e}")
-        return []
-
-
 class CSVCarinthiaDataset(torch.utils.data.Dataset):
     """Dataset for Carinthia data with labels from CSV file."""
 

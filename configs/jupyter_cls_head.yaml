@@ -1,0 +1,24 @@
+# Data configuration
+img_size: 224
+total_batch_size: 64  # Smaller batch size for fine-tuning classification head
+num_workers: 8
+
+# Training hyperparameters (optimized for classification head fine-tuning)
+epochs: 30  # 20-50 epochs typical for fine-tuning with pre-trained backbone
+lr: 0.001  # Smaller LR for fine-tuning (vs 0.03 for MoCo pretraining)
+weight_decay: 0.0001  # Standard L2 regularization
+use_amp: true  # Automatic mixed precision for faster training
+val_fraction: 0.2  # 20% validation split for better generalization
+
+# Saving & checkpointing
+save_every_epochs: 5  # Save checkpoint every 5 epochs
+seed: 42
+
+# Data paths
+train_dir: /datasets/sem_moco/Carinthia/rgb  # Classification dataset directory
+out_dir: ./checkpoints/cls_head
+log_dir: ./logs/cls_head
+csv_path: /datasets/sem_moco/Carinthia/carinthia.csv  # CSV file with image paths and labels
+
+# Weights & Biases
+wandb_project: cls_head_training

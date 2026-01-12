@@ -33,7 +33,7 @@ from utils import (
     CLS_CFG,
 )
 from model import ClassificationHead
-from dataset import set_seed, build_dataloaders_from_csv, inspect_csv_columns
+from dataset import set_seed, build_dataloaders_from_csv
 import json
 from PIL import Image
 from train_stage import load_checkpoint
@@ -41,7 +41,6 @@ from train_stage import load_checkpoint
 
 def load_backbone(
     backbone_name: str = "resnet50",
-    optimizer=None,
     checkpoint_path: Optional[str] = None,
     device=None,
 ):
@@ -103,13 +102,15 @@ def load_backbone(
 
 def create_model(
     num_classes: int,
-    backbone_dim: int = 2048,
     checkpoint_path: Optional[str] = None,
-    optimizer=None,
     device=None,
 ):
     """Create model with backbone and classification head."""
-    backbone = load_backbone("resnet50", optimizer, checkpoint_path, device)
+    backbone = load_backbone("resnet50", checkpoint_path, device)
+    # Extract feature dimension before removing FC layer
+    backbone_dim = backbone.fc.in_features
+    # Replace FC layer with Identity to get feature output
+    backbone.fc = nn.Identity()
     head = ClassificationHead(backbone_dim, num_classes)
     model = nn.Sequential(backbone, head)
     return model
@@ -280,10 +281,6 @@ def main(
         print(f"Error: CSV file not found at {cfg['csv_path']}")
         print(f"Expected columns: 'filename' (relative path) and 'label'")
         raise FileNotFoundError(f"CSV file not found: {cfg['csv_path']}")
-
-    # Inspect CSV columns
-    print(f"\nInspecting CSV file: {cfg['csv_path']}")
-    columns = inspect_csv_columns(cfg["csv_path"])
 
     # Create dataloaders from CSV
     train_dl, val_dl, class_names = build_dataloaders_from_csv(
