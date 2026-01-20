@@ -6,6 +6,12 @@ num_workers: 8
 # Training hyperparameters (optimized for classification head fine-tuning)
 epochs: 30  # 20-50 epochs typical for fine-tuning with pre-trained backbone
 lr: 0.001  # Smaller LR for fine-tuning (vs 0.03 for MoCo pretraining)
+
+# General Guidelines (LR and epochs may vary based on dataset size):
+# Small dataset (<1000 images): Freeze backbone ✓
+# Medium dataset (1000-10k): Fine-tune with low learning rate
+# Large dataset (>10k): Fine-tune with normal learning rate
+
 weight_decay: 0.0001  # Standard L2 regularization
 use_amp: true  # Automatic mixed precision for faster training
 val_fraction: 0.2  # 20% validation split for better generalization

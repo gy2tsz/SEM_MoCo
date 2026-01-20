@@ -25,7 +25,7 @@ def export_to_onnx(model, output_path, image_size=224, device="cuda"):
         output_path,
         input_names=["input"],
         output_names=["features"],
-        opset_version=14,
+        opset_version=18,
         do_constant_folding=True,
         verbose=False,
     )
@@ -56,7 +56,7 @@ def main(checkpoint_path, config_path, output_dir):
     cfg = get_config_hierarchical(config_path)
 
     # Create output directory
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(output_dir), exist_ok=True)
 
     # Create model
     print("🏗️  Creating model...")
@@ -74,15 +74,10 @@ def main(checkpoint_path, config_path, output_dir):
     model.eval()
 
     # Export to ONNX
-    onnx_output_path = os.path.join(output_dir, "resnet_backbone.onnx")
-    export_to_onnx(
-        model, onnx_output_path, image_size=cfg["img_size"], device=str(device)
-    )
+    export_to_onnx(model, output_dir, image_size=cfg["img_size"], device=str(device))
 
     print(f"\n✓ Export complete!")
-    print(f"  ONNX model: {onnx_output_path}")
-    print(f"\nTo use with TensorRT in inference:")
-    print(f"  python inference_ort.py --model {onnx_output_path}")
+    print(f"  ONNX model: {output_dir}")
 
 
 if __name__ == "__main__":
@@ -94,12 +89,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--config",
-        default="./configs/stage1.yaml",
+        default="./configs/base_config.yaml",
         help="Path to config file",
     )
     parser.add_argument(
         "--output-dir",
-        default="./checkpoints/moco_stage1",
+        default="./checkpoints/onnx/resnet_backbone.onnx",
         help="Output directory for ONNX model",
     )
     args = parser.parse_args()
